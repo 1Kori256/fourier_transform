@@ -93,6 +93,30 @@ class AppTests(unittest.TestCase):
         self.assertFalse(self.app.show_original)
         self.assertFalse(self.key(pygame.K_ESCAPE))
 
+    def test_toolbar_clicks_work_without_starting_a_stroke(self):
+        def click(name):
+            position = self.app.buttons[name].center
+            for event_type in (pygame.MOUSEBUTTONDOWN, pygame.MOUSEBUTTONUP):
+                self.app.handle_event(pygame.event.Event(event_type, pos=position, button=1))
+            self.assertFalse(self.app.drawing)
+
+        click('pause')
+        self.assertTrue(self.app.paused)
+        self.app.update(1)
+        self.assertEqual(self.app.phase, 0)
+        click('speed')
+        self.assertEqual(self.app.speed, 2)
+        click('circles')
+        click('original')
+        self.assertFalse(self.app.show_circles)
+        self.assertFalse(self.app.show_original)
+        previous_demo = self.app.demo_index
+        click('demo')
+        self.assertNotEqual(self.app.demo_index, previous_demo)
+        click('clear')
+        self.assertIsNone(self.app.series)
+        self.app.render()
+
     def test_screenshot_cli_writes_valid_png(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / 'preview.png'

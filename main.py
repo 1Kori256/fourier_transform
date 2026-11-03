@@ -15,13 +15,11 @@ from fourier import FourierSeries
 SIZE = (1180, 780)
 SAMPLES = 256
 TRACE_SAMPLES = 1024
-BACKGROUND = (12, 18, 28)
-PANEL = (20, 29, 42)
-BORDER = (39, 52, 68)
-TEXT = (227, 236, 244)
-MUTED = (132, 153, 175)
-CYAN = (87, 226, 208)
-ORANGE = (255, 184, 107)
+BACKGROUND = (247, 246, 242)
+BORDER = (216, 216, 209)
+TEXT = (47, 52, 53)
+MUTED = (117, 121, 118)
+ACCENT = (48, 94, 117)
 
 
 def xy(point):
@@ -31,13 +29,19 @@ def xy(point):
 class Visualizer:
     def __init__(self, surface):
         self.surface = surface
-        self.canvas = pygame.Rect(24, 96, 816, 608)
-        self.panel = pygame.Rect(860, 96, 296, 608)
-        self.font = pygame.font.Font(None, 23)
-        self.small = pygame.font.Font(None, 19)
-        self.title = pygame.font.Font(None, 42)
-        self.number = pygame.font.Font(None, 62)
-        self.slider = pygame.Rect(884, 257, 248, 16)
+        self.canvas = pygame.Rect(32, 88, 1116, 552)
+        self.font = pygame.font.SysFont('helveticaneue,arial,liberationsans', 18)
+        self.small = pygame.font.SysFont('helveticaneue,arial,liberationsans', 15)
+        self.title = pygame.font.SysFont('georgia,dejavuserif', 31)
+        self.slider = pygame.Rect(222, 704, 260, 3)
+        self.buttons = {
+            'demo': pygame.Rect(969, 26, 83, 34),
+            'clear': pygame.Rect(1070, 26, 70, 34),
+            'pause': pygame.Rect(40, 687, 86, 36),
+            'speed': pygame.Rect(679, 687, 57, 36),
+            'circles': pygame.Rect(795, 688, 123, 34),
+            'original': pygame.Rect(954, 688, 130, 34),
+        }
         self.series = None
         self.points = []
         self.trace = []
@@ -50,7 +54,7 @@ class Visualizer:
         self.drawing = False
         self.dragging_slider = False
         self.demo_index = -1
-        self.message = 'Draw anywhere on the canvas to replace the demo.'
+        self.message = 'Drag to draw a curve.'
         self.load_demo()
 
     def text(self, value, position, color=TEXT, font=None):
@@ -65,7 +69,7 @@ class Visualizer:
         self.series = series
         self.phase = 0.0
         self.update_trace()
-        self.message = 'Drag to draw another curve. Open strokes are closed automatically.'
+        self.message = 'Drag to draw a new curve.'
         return True
 
     def load_demo(self):
@@ -83,7 +87,7 @@ class Visualizer:
 
     def update_trace(self):
         if self.series is not None:
-            self.trace = [xy(z) for z in self.series.reconstruct(
+            self.trace = [(float(z.real), float(z.imag)) for z in self.series.reconstruct(
                 np.linspace(0, 1, TRACE_SAMPLES + 1), self.terms)]
 
     def set_terms(self, terms):
@@ -103,7 +107,7 @@ class Visualizer:
         self.points = []
         self.trace = []
         self.phase = 0.0
-        self.message = 'Hold the left mouse button and draw a continuous curve.'
+        self.message = 'Draw a curve with the mouse.'
 
     def handle_event(self, event):
         if event.type == pygame.QUIT:
@@ -132,7 +136,20 @@ class Visualizer:
                 self.drawing = False
                 self.load_demo()
         elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-            if self.slider.inflate(12, 24).collidepoint(event.pos):
+            if self.buttons['demo'].collidepoint(event.pos):
+                self.drawing = False
+                self.load_demo()
+            elif self.buttons['clear'].collidepoint(event.pos):
+                self.clear()
+            elif self.buttons['pause'].collidepoint(event.pos):
+                self.paused = not self.paused
+            elif self.buttons['speed'].collidepoint(event.pos):
+                self.speed = self.speed * 2 if self.speed < 4 else 0.25
+            elif self.buttons['circles'].collidepoint(event.pos):
+                self.show_circles = not self.show_circles
+            elif self.buttons['original'].collidepoint(event.pos):
+                self.show_original = not self.show_original
+            elif self.slider.inflate(12, 24).collidepoint(event.pos):
                 self.dragging_slider = True
                 self.set_slider(event.pos[0])
             elif self.canvas.collidepoint(event.pos):
@@ -165,90 +182,85 @@ class Visualizer:
 
     def draw_canvas(self):
         surface = self.surface
-        pygame.draw.rect(surface, (14, 22, 33), self.canvas, border_radius=12)
         surface.set_clip(self.canvas)
-        for x in range(self.canvas.left + 24, self.canvas.right, 32):
-            for y in range(self.canvas.top + 24, self.canvas.bottom, 32):
-                pygame.draw.circle(surface, (33, 45, 59), (x, y), 1)
         if self.drawing:
             if len(self.points) > 1:
-                pygame.draw.aalines(surface, CYAN, False, [xy(z) for z in self.points])
+                pygame.draw.aalines(surface, ACCENT, False, [xy(z) for z in self.points])
         elif self.series is not None:
             if self.show_original:
-                pygame.draw.aalines(surface, (57, 74, 93), True,
+                pygame.draw.aalines(surface, (207, 209, 201), True,
                                     [xy(z) for z in self.series.samples])
             chain = self.series.chain(self.phase, self.terms)
             if self.show_circles:
                 for start, end in zip(chain, chain[1:]):
                     radius = abs(end - start)
                     if radius >= 1:
-                        pygame.gfxdraw.aacircle(surface, *xy(start), round(radius), (67, 91, 112))
-                    pygame.draw.aaline(surface, (149, 175, 193), xy(start), xy(end))
-            visible = self.trace[:int(self.phase * TRACE_SAMPLES) + 1] + [xy(chain[-1])]
+                        pygame.gfxdraw.aacircle(surface, *xy(start), round(radius), (185, 193, 192))
+                    pygame.draw.aaline(surface, (135, 151, 155), xy(start), xy(end))
+                center = xy(self.series.origin)
+                pygame.draw.circle(surface, MUTED, center, 2)
+            endpoint = (float(chain[-1].real), float(chain[-1].imag))
+            visible = self.trace[:int(self.phase * TRACE_SAMPLES) + 1] + [endpoint]
             if len(visible) > 1:
-                pygame.draw.lines(surface, (27, 75, 79), False, visible, 6)
-                pygame.draw.lines(surface, CYAN, False, visible, 2)
-                pygame.draw.aalines(surface, CYAN, False, visible)
-            pygame.draw.circle(surface, ORANGE, xy(chain[-1]), 5)
-            pygame.draw.circle(surface, TEXT, xy(chain[-1]), 2)
+                pygame.draw.aalines(surface, ACCENT, False, visible)
+            pygame.gfxdraw.filled_circle(surface, *xy(chain[-1]), 4, ACCENT)
+            pygame.gfxdraw.aacircle(surface, *xy(chain[-1]), 4, ACCENT)
         else:
-            self.text('Your curve starts here.', (300, 370), MUTED)
-            self.text('Hold and drag to draw.', (320, 402), MUTED, self.small)
+            label = self.font.render('Draw a curve to begin', True, MUTED)
+            surface.blit(label, label.get_rect(center=self.canvas.center))
         surface.set_clip(None)
-        pygame.draw.rect(surface, BORDER, self.canvas, width=1, border_radius=12)
-        self.text('CANVAS', (44, 115), MUTED, self.small)
-        state = 'READY' if self.series is None else ('PAUSED' if self.paused else 'PLAYING')
-        if self.drawing:
-            state = 'DRAWING'
-        self.text(state, (738, 115), CYAN, self.small)
 
-    def draw_panel(self):
+    def draw_button(self, name, label):
+        rect = self.buttons[name]
+        if rect.collidepoint(pygame.mouse.get_pos()):
+            pygame.draw.rect(self.surface, (235, 235, 229), rect, border_radius=4)
+        rendered = self.font.render(label, True, TEXT)
+        self.surface.blit(rendered, rendered.get_rect(center=rect.center))
+
+    def draw_checkbox(self, name, label, checked):
+        rect = self.buttons[name]
+        box = pygame.Rect(rect.left, rect.centery - 7, 14, 14)
+        pygame.draw.rect(self.surface, ACCENT if checked else BORDER, box,
+                         width=0 if checked else 1, border_radius=2)
+        if checked:
+            pygame.draw.lines(self.surface, BACKGROUND, False,
+                              [(box.x + 3, box.y + 7), (box.x + 6, box.y + 10),
+                               (box.x + 11, box.y + 4)], 2)
+        rendered = self.font.render(label, True, TEXT)
+        self.surface.blit(rendered, (rect.left + 24, rect.centery - rendered.get_height() // 2))
+
+    def draw_controls(self):
         surface = self.surface
-        pygame.draw.rect(surface, PANEL, self.panel, border_radius=12)
-        self.text('RECONSTRUCTION', (884, 120), MUTED, self.small)
-        self.text(str(self.terms), (884, 164), TEXT, self.number)
-        self.text('/ 256 circles', (966, 191), MUTED)
-        self.text('Drag to change detail', (884, 229), MUTED, self.small)
-        pygame.draw.rect(surface, BORDER, self.slider, border_radius=8)
+        pygame.draw.line(surface, BORDER, (40, 660), (1140, 660))
+        self.draw_button('pause', 'Play' if self.paused else 'Pause')
+        self.text('Detail', (156, 693), MUTED)
+        pygame.draw.rect(surface, BORDER, self.slider)
         fraction = (self.terms - 1) / (SAMPLES - 1)
-        filled = self.slider.copy()
-        filled.width = max(8, round(fraction * self.slider.width))
-        pygame.draw.rect(surface, CYAN, filled, border_radius=8)
-        pygame.draw.circle(surface, TEXT, (round(self.slider.left + fraction * self.slider.width),
-                                          self.slider.centery), 8)
-        error = self.series.rms_error(self.terms) if self.series else 0
-        self.text('RMS error', (884, 301), MUTED)
-        self.text(f'{error:.2f} px' if self.series else '--', (1041, 301))
-        self.text('Playback', (884, 334), MUTED)
-        self.text(f'{self.speed:g}x', (1092, 334), ORANGE)
-        pygame.draw.line(surface, BORDER, (884, 379), (1132, 379))
-        self.text('LARGEST COEFFICIENTS', (884, 399), MUTED, self.small)
-        if self.series is not None:
-            amplitudes = np.abs(self.series.coefficients[:32])
-            maximum = max(float(amplitudes.max()), 1e-9)
-            for index, amplitude in enumerate(amplitudes):
-                height = max(1, round(float(amplitude) / maximum * 62))
-                color = CYAN if index < self.terms else BORDER
-                pygame.draw.rect(surface, color, (884 + index * 7.75, 487 - height, 5, height),
-                                 border_radius=2)
-        self.text('Sorted by amplitude', (884, 500), MUTED, self.small)
-        shortcuts = [('SPACE', 'Pause / resume'), ('LEFT / RIGHT', 'Fewer / more circles'),
-                     ('UP / DOWN', 'Playback speed'), ('C / O', 'Circles / original'),
-                     ('D / R', 'Next demo / clear')]
-        for index, (key, action) in enumerate(shortcuts):
-            y = 548 + index * 27
-            self.text(key, (884, y), ORANGE, self.small)
-            self.text(action, (989, y), MUTED, self.small)
+        position = round(self.slider.left + fraction * self.slider.width)
+        pygame.draw.line(surface, ACCENT, self.slider.midleft, (position, self.slider.centery), 3)
+        pygame.gfxdraw.filled_circle(surface, position, self.slider.centery, 6, ACCENT)
+        pygame.gfxdraw.aacircle(surface, position, self.slider.centery, 6, ACCENT)
+        self.text(f'{self.terms} circles', (503, 693))
+        self.text('Speed', (620, 693), MUTED)
+        self.draw_button('speed', f'{self.speed:g}x')
+        self.draw_checkbox('circles', 'Circles', self.show_circles)
+        self.draw_checkbox('original', 'Original', self.show_original)
+        self.text('Space  pause     /     Left & Right  detail     /     D  example',
+                  (40, 746), MUTED, self.small)
+        if self.series is not None and not self.drawing:
+            error = self.small.render(f'RMS error  {self.series.rms_error(self.terms):.2f} px', True, MUTED)
+            surface.blit(error, (1140 - error.get_width(), 746))
 
     def render(self):
         self.surface.fill(BACKGROUND)
-        self.text('FOURIER', (24, 25), TEXT, self.title)
-        self.text('A curve, rebuilt with circles.', (209, 39), MUTED)
-        self.text('256 SAMPLES  /  COMPLEX FFT', (926, 42), MUTED, self.small)
+        self.text('Fourier', (40, 24), TEXT, self.title)
+        message = 'Release to trace your curve.' if self.drawing else self.message
+        hint = self.small.render(message, True, MUTED)
+        self.surface.blit(hint, hint.get_rect(center=(SIZE[0] // 2, 43)))
+        self.draw_button('demo', 'Example')
+        self.draw_button('clear', 'Clear')
         self.draw_canvas()
-        self.draw_panel()
-        self.text(self.message, (24, 731), MUTED)
-        self.text('ESC  Quit', (1085, 731), MUTED, self.small)
+        self.draw_controls()
 
 
 def main(argv=None):

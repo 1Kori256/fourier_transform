@@ -22,12 +22,12 @@ own curve, then release to animate it. Open strokes are closed automatically.
 | Control | Action |
 | --- | --- |
 | Slider or Left / Right | Change the number of circles |
-| Space | Pause / resume |
-| Up / Down | Change playback speed |
-| C | Show / hide circles |
-| O | Show / hide the original curve |
-| D | Cycle through three demos |
-| R | Clear the canvas |
+| Pause button or Space | Pause / resume |
+| Speed button or Up / Down | Change playback speed |
+| Circles checkbox or C | Show / hide circles |
+| Original checkbox or O | Show / hide the original curve |
+| Example button or D | Cycle through three demos |
+| Clear button or R | Clear the canvas |
 | Esc | Quit |
 
 ## How it works
